@@ -57,6 +57,7 @@ def rotate_token(request):
     for security purposes.
     """
     request.META["CSRF_COOKIE"] = _get_new_csrf_key()
+    request.META["CSRF_COOKIE_USED"] = True
 
 
 def _sanitize_token(token):
@@ -186,6 +187,9 @@ class CsrfViewMiddleware(object):
         if request.META.get("CSRF_COOKIE") is None:
             return response
 
+        if not request.META.get("CSRF_COOKIE_USED", False):
+            return response
+
         # Set the CSRF cookie even if it's already set, so we renew
         # the expiry timer.
         response.set_cookie(settings.CSRF_COOKIE_NAME,
@@ -197,10 +201,8 @@ class CsrfViewMiddleware(object):
                             httponly=settings.CSRF_COOKIE_HTTPONLY
                             )
 
-        if not request.META.get("CSRF_COOKIE_USED", False):
-            return response
-
         # Content varies with the CSRF cookie, so set the Vary header.
         patch_vary_headers(response, ('Cookie',))
         response.csrf_processing_done = True
+
         return response
